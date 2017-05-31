@@ -1,7 +1,7 @@
 ########################################################
 #  LAMMPS input file                                   #
 #  http://lammps.sandia.gov/doc/Section_commands.html  #
-#  mpirun -np 32 lammps_openmpi -in minimize.in        #
+#  mpirun -np 24 lammps_openmpi -in minimize.in        #
 ########################################################
 
 
@@ -21,7 +21,7 @@ angle_style harmonic
 dihedral_style harmonic
 improper_style cvff
 pair_style lj/cut/coul/long 12.0 12.0   # cutoff=12Angstroms
-read_data 8styrene32.data
+read_data 100mer_last_MD.data
 pair_modify  shift yes  mix geometric   # Lennard-Jones potential set to zero at the cutoff
 kspace_style pppm 1.0e-4
 
@@ -36,6 +36,7 @@ thermo  1                        # write thermo info every step
 log minimize.log
 dump 0 all dcd 100 minimize.dcd  # save coordinates in DCD format
 dump_modify 0 unwrap no          # wrap coordinates into primitive cell
+
 ########################################
 #  Run a simulation (can be repeated)  #
 ########################################

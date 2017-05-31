@@ -26,6 +26,7 @@
 !*.ptraj
 !*.py
 !*.sdf
+!*.slurm
 !*.sh
 !*.vmd
 !*.xml

@@ -1,0 +1,70 @@
+########################################################
+#  Heat the system with a series of short simulations  #
+#                                                      #
+#  http://lammps.sandia.gov/doc/Section_commands.html  #
+#  mpirun -np 24 lammps_openmpi -in inputfile.in       #
+########################################################
+
+####################
+#  Initialization  #
+####################
+#units real         # Angstrom,fs,energy=Kcal/mol,electric=volt/A,mass=gr/mol,dens=gr/cm^3,atmosphere,charge=|e|
+#dimension 3
+#boundary p p p     # periodic boundary conditions
+#atom_style full
+
+#####################
+#  Atom definition  #
+#####################
+#bond_style harmonic
+#angle_style harmonic
+#dihedral_style harmonic
+#improper_style cvff
+#pair_style lj/cut/coul/long 12.0 12.0   # cutoff=12Angstroms
+#pair_modify  shift yes  mix geometric   # Lennard-Jones potential set to zero at the cutoff
+
+#####################
+#  Atom definition  #
+#####################
+variable outroot index relax.2
+read_restart relax.0.rst    # in place of above lines
+kspace_style pppm 1.0e-4
+
+################################
+#  Settings (can be repeated)  #
+################################
+neighbor 2.0 bin  # 2Angstroms above cutoff when building the neighbor list
+neigh_modify every 10 # calculate the neighbor list every 10steps
+thermo  1000         # write every N steps
+#thermo_style custom step time temp press pe ke etotal evdwl ecoul epair ebond eangle edihed eimp vol density lx ly lz cella cellb cellc
+thermo_style custom time press density lx temp evdwl ecoul ebond
+log ${outroot}.log
+dump 0 all dcd 10000 ${outroot}.dcd  # save coordinates in DCD format
+#dump_modify 0 unwrap no         # wrap coordinates into primitive cell
+
+########################################
+#  Run a simulation (can be repeated)  #
+########################################
+timestep 1.0 # 1.0fs per timestep
+reset_timestep 0
+group heavy type 1 3 4 5 6 7 9 # define a group for all non-Hydrogen atoms
+
+variable deltaT equal 10  # 25K jumps
+variable temp0 equal 300  # Initial T=300K
+variable varloop loop 12  # Simulations from 300K to 600K every 25K
+
+label temploop
+  variable temp1 equal ${temp0}+${deltaT}  # final temperature
+  fix 1 all langevin ${temp0} ${temp1} 10000 12345 zero yes # T0 Tf v_damp seed
+  fix 2 all press/berendsen iso 1.0 1.0 100000.0  #iso Pstart Pstop Pdamp
+  fix 3 all nve
+  run_style verlet
+  run 50000  # run for N timesteps
+  write_restart heatup_T${temp1}.rst # write restart file after completion of simulation
+  write_data heatup_T${temp1}.data   # write data file after completion of simulation
+  unfix 1  # reset the langevin fix
+  variable temp0 equal ${temp1} # Update initial temperature for next simulation
+  next varloop
+jump SELF temploop
+write_restart ${outroot}.rst # write restart file after completion of simulation
+write_data ${outroot}.data   # write data file after completion of simulation
