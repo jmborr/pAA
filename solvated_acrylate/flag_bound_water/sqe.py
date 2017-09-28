@@ -3,7 +3,6 @@
 
 import numpy as np
 import os
-import sys
 import argparse
 import argcomplete
 from tqdm import tqdm
@@ -22,37 +21,31 @@ Ouputs HDF5 files:
 """
 #
 #  Required arguments
-parser = argparse.ArgumentParser(description=description,
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+fmt = argparse.ArgumentDefaultsHelpFormatter
+parser = argparse.ArgumentParser(description=description, formatter_class=fmt)
 parser.add_argument('topology_file', type=str,
                     help='topology file. PDB format is OK')
 parser.add_argument('trajectory_file', type=str,
-                    help='Trajectory file, wrapped coordinates')
-#
-#  Optional arguments
+                    help='Trajectory file, unwrapped coordinates')
+parser.add_argument('save_flags_file', default='bound_solute_flags.npy',
+                    help='File containing the flags trajectory for each'\
+                         'solvent atom determining whether it is bound '\
+                         'to any solute atoms.')
+# Optional arguments
 parser.add_argument('--solvent_sel', default='resname XXXX and name H*',
-                    help='selection for solvent atoms')
-#  Default solute is polymer plus bound Na atoms
-parser.add_argument('--solute_sel',
-                    default='(not resname XXXX) or (resname XXXX and name Na*)',
-                    help='selection for solute atoms')
-help = """maximum distance from solvent atom to solute to consider solute
-atom as bound"""
-parser.add_argument('--cut_off', default=2.5, help=help)
-help = """File to save (if files does not exist) or load (if file exists)
-the trajectory flagging for each solvent atom whether it's bound to any
-solute atoms"""
-parser.add_argument('--save_flags_file', default='bound_solute_flags.npy',
-                    help=help)
-help = """Triad defining the momentum transfer values
-min_val, max_val, step. For instance, 0.1, 2.1, 0.2 will yield Q values
-from 0.1 up to and included 1.9. Last value 2.1 is excluded."""
-parser.add_argument('--qvalues', type=str, default='"0.1, 2.1, 0.2"',
-                    help=help)
-help="""Elemental elapsed time, t of I(Q,t), in units of number of
-trajectory frames"""
-parser.add_argument('--dt', type=int, default=10,
-                    help='Elemental elapsed time')
+                    help='selection for solvent atoms. Must be the same '\
+                         'than the selection used to create the flags '\
+                         'trajectory file.')
+parser.add_argument('--qvalues', type=str,
+                    default='"0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9"',
+                    help='Triad defining the momentum transfer values '\
+                         'min_val, max_val, step. For instance, '\
+                         '0.1, 2.1, 0.2 will yield Q values from 0.1 up '\
+                         'to and included 1.9. Last value 2.1 is excluded.')
+parser.add_argument('--dt', type=int,
+                    default=10,
+                    help='Elemental elapsed time, t of I(Q,t), in units '\
+                         'of number of trajectory frames')
 parser.add_argument('--nt', type=int, default=1000,
                     help='Number of elapsed times')
 parser.add_argument('--prefix', default='',
@@ -64,13 +57,7 @@ a_universe = mda.Universe(args.topology_file, args.trajectory_file)
 
 # Find when are solvent (water Hydrogen) atoms bound to solute (polymer)
 print('Finding solvent atoms bound to solute')
-if not os.path.isfile(args.save_flags_file):
-    flags = cma.solvent_bound_flag(a_universe, args.solvent_sel,
-                                   args.solute_sel, args.cut_off)
-    flags = np.array(flags).transpose()  # shape = (nframes, natoms)
-    np.save(args.save_flags_file, flags)
-else:
-    flags = np.load(args.save_flags_file)
+flags = np.load(args.save_flags_file)
 
 # Extract coordinates of solvent Hydrogen atoms
 print('Extract coordinates of solvent atoms')
@@ -81,7 +68,7 @@ for _ in tqdm(a_universe.trajectory, total=len(a_universe.trajectory)):
 
 # Find scattering
 b = np.ones(len(solvent_group))  # scattering lengths set to unity
-q_values = np.arange(*[float(q) for q in args.qvalues.strip('"').split(',')])
+q_values = np.array([float(q) for q in args.qvalues.strip('"').split(',')])
 # frames separated every 0.1ps
 # nt = 1000  number of time points
 # dt = 10 separation between time consecutive time points (1ps)
