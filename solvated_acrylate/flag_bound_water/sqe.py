@@ -74,9 +74,8 @@ q_values = np.array([float(q) for q in args.qvalues.strip('"').split(',')])
 # dt = 10 separation between time consecutive time points (1ps)
 print('Calculate intermediate incoherent structure factors')
 sqe = scatter.II(positions, b, q_values, dt=args.dt, nt=args.nt, c1=flags)
-# sqe = scatter.II(a_universe.trajectory, b, QQ, dt=10, nt=1000, c1=flags)
 
 for scatter_function in 'sf sfNN sfNY sfYN sfYY'.split():
     file_name = '{}{}.h5'.format(args.prefix, scatter_function)
-    scatter.saveIISassenaFormat(sqe[scatter_function], QQ, file_name)
+    scatter.saveIISassenaFormat(sqe[scatter_function], q_values, file_name)
 
